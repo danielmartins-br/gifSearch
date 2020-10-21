@@ -1,4 +1,4 @@
-const { FlexLayout, QMainWindow, QLabel, QMovie, QWidget } = require('@nodegui/nodegui');
+const { FlexLayout, QMainWindow, QLabel, QMovie, QWidget, QLineEdit, QPushButton } = require('@nodegui/nodegui');
 const axios = require('axios').default;
 const  GIPHY_API_KEY = 'p77gARnazhGfm7vEfTRx8Spqvj2i2pOk';
 
@@ -52,6 +52,47 @@ async function  getGifViews (listOfGifs) {
     return container;
 }
 
+function createSearchContainer (onSearch) {
+    const searchContainer = new QWidget();
+    searchContainer.setObjectName('searchContainer');
+    searchContainer.setLayout(new FlexLayout());
+
+    const searchInput = new QLineEdit();
+    searchInput.setObjectName('searchInput');
+
+    const searchButton = new QPushButton();
+    searchButton.setObjectName('searchButton');
+    searchButton.setText('🔍');
+
+    searchButton.addEventListener('clicked', () => {
+        onSearch(searchInput.text());
+    });
+
+    searchContainer.layout.addWidget(searchInput);
+    searchContainer.layout.addWidget(searchButton);
+
+    searchContainer.setStyleSheet(`
+        #searchContainer {
+            flex-direction: 'row';
+            padding: 10px;
+            align-items: 'center';
+        }
+        
+        #searchInput {
+            flex: 1;
+            height: 40px;
+        }
+        
+        #searchButton {
+            margin-left: 5px;
+            width: 50px;
+            height: 35px;
+        }
+        `);
+
+        return searchContainer;
+}
+
 const main = async() => {
     const win = new QMainWindow();
     win.setWindowTitle('Gif Search');
@@ -59,11 +100,27 @@ const main = async() => {
     const center = new QWidget();
     center.setLayout( new FlexLayout());
 
-    const listOfGifs = await searchGifs('never gonna give you up');
+    let container = new QWidget();
+    const searchContainer = createSearchContainer(async searchText => {
+        try {
+            //Cria um novo container com uma lista  de novos Gifs
+            const listOfGifs = await searchGifs(searchText);
+            const newGifContainer = await getGifViews(listOfGifs);
 
-    const container = await getGifViews(listOfGifs);
+            //Remove os containers existentes da janela
+            center.layout.removeWidget(container);
+            container.close();
 
-    center.layout.addWidget(container);
+            //Adiciona novos containers de Gifs na Janela
+            center.layout.addWidget(newGifContainer);
+            container = newGifContainer;
+        }
+        catch (err) {
+            console.error('Algo de errado não está certo', err);
+        }
+    });
+
+    center.layout.addWidget(searchContainer);
 
     win.setCentralWidget(center);
     win.show();
